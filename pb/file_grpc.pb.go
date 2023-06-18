@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FileServiceClient interface {
 	ListFiles(ctx context.Context, in *ListFilesRequest, opts ...grpc.CallOption) (*ListFilesResponse, error)
+	UploadAndNotifyProgress(ctx context.Context, opts ...grpc.CallOption) (FileService_UploadAndNotifyProgressClient, error)
 }
 
 type fileServiceClient struct {
@@ -42,11 +43,43 @@ func (c *fileServiceClient) ListFiles(ctx context.Context, in *ListFilesRequest,
 	return out, nil
 }
 
+func (c *fileServiceClient) UploadAndNotifyProgress(ctx context.Context, opts ...grpc.CallOption) (FileService_UploadAndNotifyProgressClient, error) {
+	stream, err := c.cc.NewStream(ctx, &FileService_ServiceDesc.Streams[0], "/file.FileService/UploadAndNotifyProgress", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &fileServiceUploadAndNotifyProgressClient{stream}
+	return x, nil
+}
+
+type FileService_UploadAndNotifyProgressClient interface {
+	Send(*UploadAndNotifyProgressRequest) error
+	Recv() (*UploadAndNotifyProgressResponse, error)
+	grpc.ClientStream
+}
+
+type fileServiceUploadAndNotifyProgressClient struct {
+	grpc.ClientStream
+}
+
+func (x *fileServiceUploadAndNotifyProgressClient) Send(m *UploadAndNotifyProgressRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *fileServiceUploadAndNotifyProgressClient) Recv() (*UploadAndNotifyProgressResponse, error) {
+	m := new(UploadAndNotifyProgressResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // FileServiceServer is the server API for FileService service.
 // All implementations must embed UnimplementedFileServiceServer
 // for forward compatibility
 type FileServiceServer interface {
 	ListFiles(context.Context, *ListFilesRequest) (*ListFilesResponse, error)
+	UploadAndNotifyProgress(FileService_UploadAndNotifyProgressServer) error
 	mustEmbedUnimplementedFileServiceServer()
 }
 
@@ -56,6 +89,9 @@ type UnimplementedFileServiceServer struct {
 
 func (UnimplementedFileServiceServer) ListFiles(context.Context, *ListFilesRequest) (*ListFilesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListFiles not implemented")
+}
+func (UnimplementedFileServiceServer) UploadAndNotifyProgress(FileService_UploadAndNotifyProgressServer) error {
+	return status.Errorf(codes.Unimplemented, "method UploadAndNotifyProgress not implemented")
 }
 func (UnimplementedFileServiceServer) mustEmbedUnimplementedFileServiceServer() {}
 
@@ -88,6 +124,32 @@ func _FileService_ListFiles_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FileService_UploadAndNotifyProgress_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(FileServiceServer).UploadAndNotifyProgress(&fileServiceUploadAndNotifyProgressServer{stream})
+}
+
+type FileService_UploadAndNotifyProgressServer interface {
+	Send(*UploadAndNotifyProgressResponse) error
+	Recv() (*UploadAndNotifyProgressRequest, error)
+	grpc.ServerStream
+}
+
+type fileServiceUploadAndNotifyProgressServer struct {
+	grpc.ServerStream
+}
+
+func (x *fileServiceUploadAndNotifyProgressServer) Send(m *UploadAndNotifyProgressResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *fileServiceUploadAndNotifyProgressServer) Recv() (*UploadAndNotifyProgressRequest, error) {
+	m := new(UploadAndNotifyProgressRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // FileService_ServiceDesc is the grpc.ServiceDesc for FileService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -100,6 +162,13 @@ var FileService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _FileService_ListFiles_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "UploadAndNotifyProgress",
+			Handler:       _FileService_UploadAndNotifyProgress_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "proto/file.proto",
 }

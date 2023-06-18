@@ -9,6 +9,15 @@ message ListFilesResponse {
     repeated string filenames = 1;
 };
 
+message UploadAndNotifyProgressRequest {
+    bytes data = 1;
+};
+
+message UploadAndNotifyProgressResponse {
+    string msg = 1;
+};
+
 service FileService {
     rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
+    rpc UploadAndNotifyProgress(stream UploadAndNotifyProgressRequest) returns (stream UploadAndNotifyProgressResponse);
 }
